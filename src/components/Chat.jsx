@@ -2,28 +2,23 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { getProducts, REGIONS } from '../data/products'
 import { saveToWardrobe, getWardrobe } from '../utils/wardrobe'
 
-// ─── Message helpers ───────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 let _id = 0
-const mid = () => ++_id
-
+const mid = () => String(++_id)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const now = () => {
+  const d = new Date()
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+}
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
-
-function TypingDots() {
+// ─── Typing indicator ─────────────────────────────────────────────────────────
+function TypingBubble() {
   return (
-    <div style={bubble.aiWrap}>
-      <div style={bubble.avatar}>✦</div>
-      <div style={{ ...bubble.ai, padding: '14px 18px' }}>
-        <div style={styles.dotsRow}>
+    <div style={s.msgRow}>
+      <div style={s.aiBubble}>
+        <div style={s.dots}>
           {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              style={{
-                ...styles.dot,
-                animationDelay: `${i * 0.18}s`,
-              }}
-            />
+            <span key={i} style={{ ...s.dot, animationDelay: `${i * 0.2}s` }} />
           ))}
         </div>
       </div>
@@ -31,212 +26,309 @@ function TypingDots() {
   )
 }
 
-function AiBubble({ content }) {
-  return (
-    <div style={bubble.aiWrap}>
-      <div style={bubble.avatar}>✦</div>
-      <div style={bubble.ai}>{content}</div>
-    </div>
-  )
-}
+// ─── AI bubble (text + optional action buttons inside) ───────────────────────
+function AiMessage({ msg, onSelect }) {
+  const hasOptions = msg.options && msg.options.length > 0
+  const hasProducts = msg.products && msg.products.length > 0
 
-function UserBubble({ content }) {
   return (
-    <div style={bubble.userWrap}>
-      <div style={bubble.user}>{content}</div>
-    </div>
-  )
-}
+    <div style={s.msgRow}>
+      <div style={{ maxWidth: '82%' }}>
+        <div style={s.aiBubble}>
+          {/* Text content */}
+          {msg.content && (
+            <p style={s.bubbleText}>{renderBold(msg.content)}</p>
+          )}
 
-function UserImageBubble({ src }) {
-  return (
-    <div style={bubble.userWrap}>
-      <div style={bubble.userImg}>
-        <img src={src} alt="Your outfit" style={styles.uploadedImg} />
-      </div>
-    </div>
-  )
-}
-
-function QuickReplies({ options, onSelect, disabled }) {
-  const [selected, setSelected] = useState(null)
-  return (
-    <div style={styles.qrWrap}>
-      {options.map((opt) => (
-        <button
-          key={opt.value ?? opt.label}
-          style={{
-            ...styles.qrBtn,
-            ...(selected === (opt.value ?? opt.label) ? styles.qrBtnSelected : {}),
-            ...(disabled ? styles.qrBtnDisabled : {}),
-          }}
-          onClick={() => {
-            if (disabled || selected) return
-            setSelected(opt.value ?? opt.label)
-            onSelect(opt)
-          }}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function ProductCards({ products, recommendation }) {
-  return (
-    <div style={styles.cardsOuter}>
-      {recommendation && (
-        <div style={styles.recBadge}>
-          <span style={styles.recStar}>★</span>
-          <span style={styles.recLabel}>Top Pick</span>
-        </div>
-      )}
-      <div style={styles.cardsScroll}>
-        {products.map((p) => (
-          <a
-            key={p.id}
-            href={p.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={styles.card}
-          >
-            <div style={{ ...styles.cardThumb, background: p.color + '22' }}>
-              <span style={{ fontSize: '28px' }}>
-                {getProductEmoji(p.store)}
-              </span>
+          {/* Option buttons inside the bubble */}
+          {hasOptions && (
+            <div style={{ ...s.optionsCol, marginTop: msg.content ? 10 : 0 }}>
+              {msg.options.map((opt) => {
+                const isSelected = msg.selectedOption === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    style={isSelected ? s.optBtnSelected : s.optBtn}
+                    onClick={() => !msg.selectedOption && onSelect && onSelect(msg.id, opt)}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
             </div>
-            <div style={styles.cardInfo}>
-              <p style={styles.cardName}>{p.name}</p>
-              <p style={styles.cardStore}>{p.store}</p>
-              <div style={styles.cardBottom}>
-                <span style={styles.cardPrice}>{p.price}</span>
-                <span style={styles.cardArrow}>→</span>
+          )}
+
+          {/* Product cards stacked inside the bubble */}
+          {hasProducts && (
+            <div style={{ marginTop: msg.content ? 10 : 0 }}>
+              {msg.subtitle && (
+                <p style={s.promoLink}>
+                  🔥 <span style={s.promoLinkText}>See real customer photos and styling tips</span> for the best match!
+                </p>
+              )}
+              <div style={s.productsList}>
+                {msg.products.map((p) => (
+                  <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" style={s.productCard}>
+                    <div style={s.productThumb}>
+                      <span style={{ fontSize: 22 }}>{storeEmoji(p.store)}</span>
+                    </div>
+                    <div style={s.productInfo}>
+                      <p style={s.productName}>{p.name}</p>
+                      <p style={s.productStore}>{p.store}</p>
+                      <div style={s.productRating}>
+                        <span style={s.stars}>★★★★½</span>
+                        <span style={s.ratingCount}>(Based on 59 ratings)</span>
+                      </div>
+                    </div>
+                    <p style={s.productPrice}>{p.price}</p>
+                  </a>
+                ))}
               </div>
             </div>
-          </a>
-        ))}
+          )}
+        </div>
+        <p style={s.timestamp}>{msg.time}</p>
       </div>
     </div>
   )
 }
 
-function getProductEmoji(store) {
-  const s = store.toLowerCase()
-  if (s.includes('zivame') || s.includes('clovia') || s.includes('enamor') || s.includes('jockey') || s.includes('amante')) return '🛍️'
+// ─── User bubble ──────────────────────────────────────────────────────────────
+function UserMessage({ msg }) {
+  return (
+    <div style={s.userRow}>
+      <div style={{ maxWidth: '70%' }}>
+        {msg.imageSrc ? (
+          <div style={s.userImageBubble}>
+            <img src={msg.imageSrc} alt="outfit" style={s.userImage} />
+          </div>
+        ) : (
+          <div style={s.userBubble}>
+            <p style={s.bubbleText}>{msg.content}</p>
+          </div>
+        )}
+        <p style={{ ...s.timestamp, textAlign: 'right' }}>{msg.time}</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Bold text renderer ───────────────────────────────────────────────────────
+function renderBold(text) {
+  if (!text?.includes('**')) return text
+  return text.split(/\*\*(.+?)\*\*/).map((part, i) =>
+    i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+  )
+}
+
+function storeEmoji(store) {
+  const s = store?.toLowerCase() || ''
   if (s.includes('myntra')) return '👗'
   if (s.includes('nykaa')) return '💄'
+  if (s.includes('zivame') || s.includes('clovia')) return '🛍️'
   if (s.includes('amazon')) return '📦'
   if (s.includes('victoria')) return '🌹'
   if (s.includes('asos')) return '✨'
   if (s.includes('nordstrom')) return '🏬'
-  if (s.includes('aerie')) return '🌸'
   if (s.includes('m&s') || s.includes('marks')) return '🇬🇧'
-  if (s.includes('john lewis')) return '🏪'
   return '🛍️'
 }
 
-// ─── Main Chat component ───────────────────────────────────────────────────────
-
+// ─── Main Chat ────────────────────────────────────────────────────────────────
 export default function Chat({ onBack }) {
   const [messages, setMessages] = useState([])
-  const [phase, setPhase] = useState('location') // location | upload | analyzing | followup | results | done
+  const [phase, setPhase] = useState('location')
   const [region, setRegion] = useState(null)
   const regionRef = useRef(null)
   const [analysis, setAnalysis] = useState(null)
   const [pendingFollowups, setPendingFollowups] = useState([])
   const [followupIdx, setFollowupIdx] = useState(0)
-  const [savedToWardrobe, setSavedToWardrobe] = useState(false)
-  const [showAttachSheet, setShowAttachSheet] = useState(false)
+  const [showSheet, setShowSheet] = useState(false)
   const galleryRef = useRef(null)
   const cameraRef = useRef(null)
   const bottomRef = useRef(null)
-  const phaseRef = useRef(phase)
 
-  useEffect(() => { phaseRef.current = phase }, [phase])
   useEffect(() => { regionRef.current = region }, [region])
 
-  // ── Message helpers ──
-  const push = useCallback((msg) => {
-    setMessages((m) => [...m, { id: mid(), ...msg }])
+  // Auto-scroll
+  useEffect(() => {
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 80)
+  }, [messages])
+
+  // Helpers to add messages
+  const addMsg = useCallback((msg) => {
+    setMessages((m) => [...m, { id: mid(), time: now(), ...msg }])
   }, [])
 
-  const pushTyping = useCallback(() => {
+  const addTyping = useCallback(() => {
     setMessages((m) => [...m, { id: 'typing', type: 'typing' }])
   }, [])
 
   const removeTyping = useCallback(() => {
-    setMessages((m) => m.filter((msg) => msg.id !== 'typing'))
+    setMessages((m) => m.filter((x) => x.id !== 'typing'))
   }, [])
 
-  // ── Scroll on new messages ──
-  useEffect(() => {
-    setTimeout(() => {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, 80)
-  }, [messages])
+  // Update a specific message (e.g. to set selectedOption)
+  const updateMsg = useCallback((id, patch) => {
+    setMessages((m) => m.map((x) => x.id === id ? { ...x, ...patch } : x))
+  }, [])
 
-  // ── Init conversation ──
+  // ── Init: location question ──
   useEffect(() => {
     const init = async () => {
-      await sleep(500)
-      pushTyping()
-      await sleep(1100)
-      removeTyping()
-      push({ from: 'ai', type: 'text', content: "Hey! 👋 I'm your AI stylist. Let's find you the perfect innerwear for your outfit." })
       await sleep(600)
-      push({ from: 'ai', type: 'text', content: 'First — where are you shopping from?' })
-      await sleep(300)
-      push({
+      addTyping()
+      await sleep(1000)
+      removeTyping()
+      addMsg({
         from: 'ai',
-        type: 'quick_replies',
+        type: 'ai',
+        content: "We've detected your location as India. Is this correct?",
         options: [
-          { label: '🇮🇳 India', value: 'IN' },
-          { label: '🇺🇸 United States', value: 'US' },
-          { label: '🇬🇧 United Kingdom', value: 'UK' },
+          { label: 'Yes, proceed', value: 'IN' },
+          { label: 'No, I am in a different location', value: 'other' },
         ],
-        onSelectKey: 'location',
       })
     }
     init()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, []) // eslint-disable-line
 
-  // ── Location selected ──
-  const handleLocationSelect = useCallback(async (option) => {
-    const r = option.value
-    setRegion(r)
-    regionRef.current = r
+  // ── Option selected (any AI message with options) ──
+  const handleOptionSelect = useCallback(async (msgId, opt) => {
+    // Visually mark selection in the bubble
+    updateMsg(msgId, { selectedOption: opt.value })
 
-    // Freeze the quick replies by replacing with a confirmed text
-    setMessages((m) => m.filter((msg) => msg.type !== 'quick_replies'))
-    push({ from: 'user', type: 'text', content: option.label })
+    await sleep(300)
 
-    setPhase('upload')
+    const r = regionRef.current
 
-    await sleep(500)
-    pushTyping()
-    await sleep(1000)
-    removeTyping()
+    if (phase === 'location') {
+      let chosenRegion = opt.value
 
-    const storeHint =
-      r === 'IN' ? 'Zivame, Clovia, or Myntra'
-      : r === 'UK' ? 'M&S or ASOS'
-      : "Victoria's Secret or Aerie"
+      if (opt.value === 'other') {
+        // Show region picker
+        await sleep(500)
+        addMsg({
+          from: 'ai',
+          type: 'ai',
+          content: 'Which region are you in?',
+          options: [
+            { label: '🇮🇳 India', value: 'IN' },
+            { label: '🇺🇸 United States', value: 'US' },
+            { label: '🇬🇧 United Kingdom', value: 'UK' },
+          ],
+        })
+        return
+      }
 
-    push({ from: 'ai', type: 'text', content: `${REGIONS[r].flag} Great! Now upload your outfit — a screenshot from ${storeHint}, flat lay, or hanger shot all work perfectly.` })
-    await sleep(400)
-    push({ from: 'ai', type: 'text', content: 'Tap the ＋ button below to attach a photo 📸' })
-  }, [push, pushTyping, removeTyping])
+      // 'IN' or a region key
+      if (['IN', 'US', 'UK'].includes(opt.value)) {
+        chosenRegion = opt.value
+      }
 
-  // ── Image file processing ──
+      setRegion(chosenRegion)
+      regionRef.current = chosenRegion
+
+      addMsg({ from: 'user', type: 'user', content: opt.label })
+      setPhase('upload')
+
+      await sleep(600)
+      addTyping()
+      await sleep(1000)
+      removeTyping()
+
+      const storeHint =
+        chosenRegion === 'IN' ? 'Zivame, Clovia, or Myntra'
+        : chosenRegion === 'UK' ? 'M&S or ASOS'
+        : "Victoria's Secret or Aerie"
+
+      addMsg({
+        from: 'ai',
+        type: 'ai',
+        content: `${REGIONS[chosenRegion].flag} Perfect! Upload your outfit — a screenshot from ${storeHint}, flat lay, or hanger shot works great. Tap + to attach.`,
+      })
+
+    } else if (phase === 'followup') {
+      addMsg({ from: 'user', type: 'user', content: opt.label })
+
+      const nextIdx = followupIdx + 1
+      setFollowupIdx(nextIdx)
+
+      if (nextIdx < pendingFollowups.length) {
+        await sleep(500)
+        addTyping()
+        await sleep(900)
+        removeTyping()
+        const next = pendingFollowups[nextIdx]
+        addMsg({
+          from: 'ai',
+          type: 'ai',
+          content: next.question,
+          options: next.options.map((o) => ({ label: o, value: o })),
+        })
+      } else {
+        // Done with followups → show results
+        setPhase('results')
+        await sleep(400)
+        addTyping()
+        await sleep(1200)
+        removeTyping()
+        await showRecommendation(analysis, regionRef.current)
+      }
+
+    } else if (phase === 'done') {
+      addMsg({ from: 'user', type: 'user', content: opt.label })
+
+      if (opt.value === 'more') {
+        await sleep(400)
+        addTyping()
+        await sleep(800)
+        removeTyping()
+        addMsg({ from: 'ai', type: 'ai', content: "Here are more options for you! Try uploading a different outfit to get fresh recommendations." })
+      } else if (opt.value === 'save') {
+        if (analysis) saveToWardrobe({ analysis, savedAt: new Date().toISOString() })
+        await sleep(400)
+        addMsg({ from: 'ai', type: 'ai', content: `Saved to your wardrobe! 🗂️ You've got ${getWardrobe().length} look${getWardrobe().length === 1 ? '' : 's'} saved.` })
+      } else if (opt.value === 'reset') {
+        setPhase('upload')
+        setAnalysis(null)
+        setPendingFollowups([])
+        setFollowupIdx(0)
+        await sleep(400)
+        addMsg({ from: 'ai', type: 'ai', content: 'Upload your next outfit! 👗' })
+      }
+    }
+  }, [phase, followupIdx, pendingFollowups, analysis, addMsg, addTyping, removeTyping, updateMsg]) // eslint-disable-line
+
+  // ── Show recommendation ──
+  const showRecommendation = useCallback(async (result, r) => {
+    const primaryProducts = getProducts(result.primary_recommendation.type, r).slice(0, 3)
+
+    addMsg({
+      from: 'ai',
+      type: 'ai',
+      content: `Here are the best ${result.primary_recommendation.name.toLowerCase()}s for your ${result.garment_summary.toLowerCase()}:`,
+      subtitle: true,
+      products: primaryProducts,
+    })
+
+    await sleep(800)
+    addMsg({
+      from: 'ai',
+      type: 'ai',
+      content: 'Do you like these options or would you like me to suggest more options?',
+      options: [
+        { label: "I'd like more options!", value: 'more' },
+        { label: "No thanks! I'm good!", value: 'save' },
+      ],
+    })
+    setPhase('done')
+  }, [addMsg])
+
+  // ── Process uploaded image ──
   const processFile = useCallback(async (file) => {
     if (!file || !file.type.startsWith('image/')) return
-    if (file.size > 12 * 1024 * 1024) {
-      push({ from: 'ai', type: 'text', content: 'That image is a bit large. Could you try one under 12MB?' })
-      return
-    }
-
-    setShowAttachSheet(false)
+    setShowSheet(false)
 
     const reader = new FileReader()
     reader.onload = async (e) => {
@@ -244,18 +336,18 @@ export default function Chat({ onBack }) {
       const base64 = dataUrl.split(',')[1]
       const mediaType = file.type || 'image/jpeg'
 
-      push({ from: 'user', type: 'image', src: dataUrl })
+      addMsg({ from: 'user', type: 'user', imageSrc: dataUrl })
       setPhase('analyzing')
       await sleep(300)
-      pushTyping()
+      addTyping()
 
       try {
         const isDev = window.location.hostname === 'localhost'
         let result
 
         if (isDev) {
-          await sleep(3800)
-          result = getMockResult()
+          await sleep(3500)
+          result = mockResult()
         } else {
           const res = await fetch('/api/analyze', {
             method: 'POST',
@@ -274,279 +366,104 @@ export default function Chat({ onBack }) {
           setPendingFollowups(result.followup_questions)
           setFollowupIdx(0)
           setPhase('followup')
-          await showFollowup(result.followup_questions[0])
+
+          await sleep(400)
+          addTyping()
+          await sleep(1000)
+          removeTyping()
+
+          const q = result.followup_questions[0]
+          addMsg({
+            from: 'ai',
+            type: 'ai',
+            content: q.question,
+            options: q.options.map((o) => ({ label: o, value: o })),
+          })
         } else {
           setPhase('results')
+          await sleep(400)
           await showRecommendation(result, regionRef.current)
         }
       } catch (err) {
         console.error(err)
         removeTyping()
-        push({ from: 'ai', type: 'text', content: "Hmm, I couldn't read that image clearly. Try a brighter photo or a screenshot from a shopping app? 🤔" })
+        addMsg({ from: 'ai', type: 'ai', content: "I couldn't read that image clearly. Try a brighter photo or a screenshot? 🤔" })
         setPhase('upload')
       }
     }
     reader.readAsDataURL(file)
-  }, [push, pushTyping, removeTyping]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Show a follow-up question ──
-  const showFollowup = useCallback(async (q) => {
-    await sleep(600)
-    push({ from: 'ai', type: 'text', content: q.question })
-    await sleep(300)
-    push({
-      from: 'ai',
-      type: 'quick_replies',
-      options: q.options.map((o) => ({ label: o, value: o })),
-      onSelectKey: 'followup',
-    })
-  }, [push])
-
-  // ── Follow-up answered ──
-  const handleFollowupSelect = useCallback(async (option) => {
-    setMessages((m) => m.filter((msg) => msg.type !== 'quick_replies'))
-    push({ from: 'user', type: 'text', content: option.label })
-
-    const nextIdx = followupIdx + 1
-    setFollowupIdx(nextIdx)
-
-    if (nextIdx < pendingFollowups.length) {
-      // Show next follow-up
-      await showFollowup(pendingFollowups[nextIdx])
-    } else {
-      // All follow-ups done → show results
-      setPhase('results')
-      await sleep(500)
-      pushTyping()
-      await sleep(1200)
-      removeTyping()
-      await showRecommendation(analysis, regionRef.current)
-    }
-  }, [followupIdx, pendingFollowups, analysis, push, pushTyping, removeTyping, showFollowup]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Show recommendation ──
-  const showRecommendation = useCallback(async (result, r) => {
-    const primaryProducts = getProducts(result.primary_recommendation.type, r)
-    const alt1Products = result.alternatives?.[0] ? getProducts(result.alternatives[0].type, r) : []
-    const alt2Products = result.alternatives?.[1] ? getProducts(result.alternatives[1].type, r) : []
-
-    push({ from: 'ai', type: 'text', content: `Here's what works perfectly with your outfit ✨` })
-    await sleep(400)
-    push({ from: 'ai', type: 'text', content: result.garment_summary })
-    await sleep(600)
-
-    // Primary recommendation
-    push({ from: 'ai', type: 'text', content: `**${result.primary_recommendation.name}** — ${result.primary_recommendation.reasoning}` })
-    await sleep(300)
-    push({ from: 'ai', type: 'products', products: primaryProducts, isPrimary: true })
-
-    // Alternatives
-    if (alt1Products.length > 0) {
-      await sleep(800)
-      push({ from: 'ai', type: 'text', content: `Also works: **${result.alternatives[0].name}** — ${result.alternatives[0].reasoning}` })
-      await sleep(300)
-      push({ from: 'ai', type: 'products', products: alt1Products, isPrimary: false })
-    }
-
-    if (alt2Products.length > 0) {
-      await sleep(600)
-      push({ from: 'ai', type: 'text', content: `Or: **${result.alternatives[1].name}** — ${result.alternatives[1].reasoning}` })
-      await sleep(300)
-      push({ from: 'ai', type: 'products', products: alt2Products, isPrimary: false })
-    }
-
-    // Wardrobe offer
-    await sleep(900)
-    push({ from: 'ai', type: 'text', content: 'Want to save this look to your wardrobe for next time?' })
-    await sleep(300)
-    push({
-      from: 'ai',
-      type: 'quick_replies',
-      options: [
-        { label: '🗂️ Save to wardrobe', value: 'save' },
-        { label: '📸 Try another outfit', value: 'reset' },
-      ],
-      onSelectKey: 'wardrobe',
-    })
-
-    setPhase('done')
-  }, [push]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Wardrobe / reset ──
-  const handleWardrobeSelect = useCallback(async (option) => {
-    setMessages((m) => m.filter((msg) => msg.type !== 'quick_replies'))
-    push({ from: 'user', type: 'text', content: option.label })
-
-    if (option.value === 'save') {
-      if (analysis) {
-        saveToWardrobe({
-          analysis,
-          savedAt: new Date().toISOString(),
-        })
-        setSavedToWardrobe(true)
-      }
-      await sleep(400)
-      push({ from: 'ai', type: 'text', content: `Saved! 🗂️ You've got ${getWardrobe().length} look${getWardrobe().length === 1 ? '' : 's'} in your wardrobe.` })
-      await sleep(600)
-      push({ from: 'ai', type: 'text', content: 'Want to try another outfit?' })
-      await sleep(300)
-      push({
-        from: 'ai',
-        type: 'quick_replies',
-        options: [{ label: '📸 New outfit', value: 'reset' }],
-        onSelectKey: 'reset',
-      })
-    } else {
-      // Reset
-      handleReset()
-    }
-  }, [analysis, push]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleReset = useCallback(async () => {
-    setMessages((m) => m.filter((msg) => msg.type !== 'quick_replies'))
-    setPhase('upload')
-    setAnalysis(null)
-    setPendingFollowups([])
-    setFollowupIdx(0)
-    setSavedToWardrobe(false)
-    await sleep(400)
-    push({ from: 'ai', type: 'text', content: 'Upload your next outfit! 👗' })
-  }, [push])
-
-  // ── Quick reply dispatcher ──
-  const handleQuickReply = useCallback((onSelectKey, option) => {
-    if (onSelectKey === 'location') handleLocationSelect(option)
-    else if (onSelectKey === 'followup') handleFollowupSelect(option)
-    else if (onSelectKey === 'wardrobe') handleWardrobeSelect(option)
-    else if (onSelectKey === 'reset') handleReset()
-  }, [handleLocationSelect, handleFollowupSelect, handleWardrobeSelect, handleReset])
-
-  // ── Render messages ──
-  const renderMessage = (msg) => {
-    if (msg.type === 'typing') return <TypingDots key="typing" />
-
-    if (msg.from === 'user') {
-      if (msg.type === 'image') return <UserImageBubble key={msg.id} src={msg.src} />
-      return (
-        <UserBubble key={msg.id} content={<span>{renderText(msg.content)}</span>} />
-      )
-    }
-
-    // AI messages
-    if (msg.type === 'quick_replies') {
-      return (
-        <QuickReplies
-          key={msg.id}
-          options={msg.options}
-          onSelect={(opt) => handleQuickReply(msg.onSelectKey, opt)}
-          disabled={phase === 'analyzing'}
-        />
-      )
-    }
-
-    if (msg.type === 'products') {
-      return (
-        <div key={msg.id} style={styles.productsWrap}>
-          <ProductCards products={msg.products} recommendation={msg.isPrimary} />
-        </div>
-      )
-    }
-
-    return (
-      <AiBubble key={msg.id} content={<span>{renderText(msg.content)}</span>} />
-    )
-  }
-
-  // Bold text renderer (simple **bold** support)
-  const renderText = (text) => {
-    if (!text || !text.includes('**')) return text
-    const parts = text.split(/\*\*(.+?)\*\*/)
-    return parts.map((part, i) =>
-      i % 2 === 1 ? <strong key={i}>{part}</strong> : part
-    )
-  }
+  }, [addMsg, addTyping, removeTyping, showRecommendation])
 
   const canAttach = phase === 'upload' || phase === 'done'
 
   return (
-    <div style={styles.container}>
+    <div style={s.container}>
       {/* Header */}
-      <div style={styles.header}>
-        <button style={styles.backBtn} onClick={onBack}>←</button>
-        <div style={styles.headerCenter}>
-          <p style={styles.headerLabel}>VIRTUAL STYLIST</p>
-          <div style={styles.onlineDot} />
-        </div>
-        <div style={{ width: 40 }} />
+      <div style={s.header}>
+        <button style={s.headerBtn} onClick={onBack}>✕</button>
+        <span style={s.headerTitle}>VIRTUAL STYLIST</span>
+        <button style={s.headerBtn}>
+          <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
+            <line x1="0" y1="2" x2="18" y2="2" stroke="#1a1614" strokeWidth="1.5"/>
+            <line x1="0" y1="7" x2="18" y2="7" stroke="#1a1614" strokeWidth="1.5"/>
+            <line x1="0" y1="12" x2="18" y2="12" stroke="#1a1614" strokeWidth="1.5"/>
+            <circle cx="5" cy="2" r="2" fill="white" stroke="#1a1614" strokeWidth="1.5"/>
+            <circle cx="13" cy="7" r="2" fill="white" stroke="#1a1614" strokeWidth="1.5"/>
+            <circle cx="7" cy="12" r="2" fill="white" stroke="#1a1614" strokeWidth="1.5"/>
+          </svg>
+        </button>
       </div>
 
-      {/* Message thread */}
-      <div style={styles.thread}>
-        <div style={styles.threadInner}>
-          {messages.map(renderMessage)}
-          <div ref={bottomRef} style={{ height: 8 }} />
+      {/* Thread */}
+      <div style={s.thread}>
+        <div style={s.threadInner}>
+          {messages.map((msg) => {
+            if (msg.type === 'typing') return <TypingBubble key="typing" />
+            if (msg.from === 'user') return <UserMessage key={msg.id} msg={msg} />
+            return (
+              <AiMessage
+                key={msg.id}
+                msg={msg}
+                onSelect={(msgId, opt) => handleOptionSelect(msgId, opt)}
+              />
+            )
+          })}
+          <div ref={bottomRef} />
         </div>
       </div>
 
       {/* Input bar */}
-      <div style={styles.inputBar}>
+      <div style={s.inputBar}>
         <button
-          style={{ ...styles.attachBtn, ...(canAttach ? {} : styles.attachBtnDisabled) }}
-          onClick={() => canAttach && setShowAttachSheet(true)}
+          style={{ ...s.plusBtn, opacity: canAttach ? 1 : 0.35 }}
+          onClick={() => canAttach && setShowSheet(true)}
         >
-          ＋
+          +
         </button>
-        <div style={styles.inputField}>
-          <span style={styles.inputPlaceholder}>
-            {phase === 'upload' ? 'Tap ＋ to upload your outfit' :
-             phase === 'analyzing' ? 'Analysing your outfit…' :
-             phase === 'location' ? 'Choose your location above' :
-             'Message your stylist…'}
-          </span>
+        <div style={s.inputField}>
+          <span style={s.inputPlaceholder}>Type what you're looking for...</span>
         </div>
-        <button style={styles.sendBtn}>↑</button>
       </div>
 
       {/* Hidden file inputs */}
-      <input
-        ref={galleryRef}
-        type="file"
-        accept="image/*"
-        style={{ display: 'none' }}
-        onChange={(e) => processFile(e.target.files[0])}
-      />
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style={{ display: 'none' }}
-        onChange={(e) => processFile(e.target.files[0])}
-      />
+      <input ref={galleryRef} type="file" accept="image/*" style={{ display: 'none' }}
+        onChange={(e) => processFile(e.target.files[0])} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+        onChange={(e) => processFile(e.target.files[0])} />
 
-      {/* Attach bottom sheet */}
-      {showAttachSheet && (
-        <div style={styles.sheetOverlay} onClick={() => setShowAttachSheet(false)}>
-          <div style={styles.sheet} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.sheetHandle} />
-            <p style={styles.sheetTitle}>Add your outfit</p>
-            <button
-              style={styles.sheetBtn}
-              onClick={() => { setShowAttachSheet(false); galleryRef.current?.click() }}
-            >
-              <span style={styles.sheetBtnIcon}>🖼️</span>
-              <span>Choose from gallery</span>
+      {/* Bottom sheet */}
+      {showSheet && (
+        <div style={s.overlay} onClick={() => setShowSheet(false)}>
+          <div style={s.sheet} onClick={(e) => e.stopPropagation()}>
+            <div style={s.sheetHandle} />
+            <p style={s.sheetTitle}>Add your outfit</p>
+            <button style={s.sheetRow} onClick={() => { setShowSheet(false); galleryRef.current?.click() }}>
+              <span style={s.sheetIcon}>🖼️</span> Choose from gallery
             </button>
-            <button
-              style={styles.sheetBtn}
-              onClick={() => { setShowAttachSheet(false); cameraRef.current?.click() }}
-            >
-              <span style={styles.sheetBtnIcon}>📷</span>
-              <span>Take a photo</span>
+            <button style={s.sheetRow} onClick={() => { setShowSheet(false); cameraRef.current?.click() }}>
+              <span style={s.sheetIcon}>📷</span> Take a photo
             </button>
-            <button style={styles.sheetCancel} onClick={() => setShowAttachSheet(false)}>
-              Cancel
-            </button>
+            <button style={s.sheetCancel} onClick={() => setShowSheet(false)}>Cancel</button>
           </div>
         </div>
       )}
@@ -554,363 +471,296 @@ export default function Chat({ onBack }) {
   )
 }
 
-// ─── Mock data (dev only) ──────────────────────────────────────────────────────
-function getMockResult() {
+// ─── Mock ─────────────────────────────────────────────────────────────────────
+function mockResult() {
   return {
-    garment_type: 'deep_v_dress',
-    garment_summary: 'A deep V-neck dress with spaghetti straps — elegant, flowy, and semi-sheer through the bodice.',
-    attributes: {
-      neckline: 'deep V-neck',
-      back_style: 'open back',
-      straps: 'spaghetti straps',
-      fabric_opacity: 'semi-sheer',
-      fit: 'fitted bodice, flowy skirt',
-    },
+    garment_type: 'dress',
+    garment_summary: 'black backless dress',
     needs_followup: true,
     followup_questions: [
       {
-        question: "What's the occasion for this dress?",
-        options: ['Casual day out', 'Date night', 'Formal event', 'Wedding guest'],
+        question: "You're looking for a bra that works well with a black backless dress. Do you prefer:",
+        options: ['A natural look', 'A push up effect'],
       },
     ],
     primary_recommendation: {
-      type: 'backless_adhesive_bra',
-      name: 'Backless Adhesive Bra',
-      reasoning: 'The deep V and open back rule out any traditional bra. An adhesive bra gives lift and stays completely invisible under the neckline and back.',
+      type: 'boob_tape',
+      name: 'Boob Tape',
+      reasoning: 'Best for backless styles — gives lift and shape with full back exposure.',
     },
     alternatives: [
-      {
-        type: 'nipple_covers',
-        name: 'Nipple Covers',
-        reasoning: 'For a completely free feeling — silicone covers are invisible and perfect for open-back styles.',
-      },
-      {
-        type: 'fashion_tape',
-        name: 'Fashion Tape',
-        reasoning: 'For extra security along the V-neckline to keep the fabric in place all evening.',
-      },
+      { type: 'nipple_covers', name: 'Nipple Covers', reasoning: 'For a completely free feeling.' },
+      { type: 'backless_adhesive_bra', name: 'Adhesive Bra', reasoning: 'For more structured support.' },
     ],
   }
 }
 
-// ─── Styles ────────────────────────────────────────────────────────────────────
-const bubble = {
-  aiWrap: {
-    display: 'flex',
-    alignItems: 'flex-end',
-    gap: '8px',
-    maxWidth: '82%',
-    animation: 'messageIn 0.3s ease',
-  },
-  avatar: {
-    width: '28px',
-    height: '28px',
-    borderRadius: '50%',
-    background: 'var(--accent)',
-    color: 'white',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '10px',
-    flexShrink: 0,
-    marginBottom: '2px',
-  },
-  ai: {
-    background: 'var(--bubble-ai)',
-    borderRadius: '18px 18px 18px 4px',
-    padding: '12px 16px',
-    fontSize: '14px',
-    color: 'var(--text)',
-    lineHeight: '1.55',
-    wordBreak: 'break-word',
-  },
-  userWrap: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    animation: 'messageIn 0.3s ease',
-  },
-  user: {
-    background: 'var(--bubble-user)',
-    border: '1.5px solid var(--bubble-user-border)',
-    borderRadius: '18px 18px 4px 18px',
-    padding: '12px 16px',
-    fontSize: '14px',
-    color: 'var(--text)',
-    lineHeight: '1.55',
-    maxWidth: '75%',
-    wordBreak: 'break-word',
-  },
-  userImg: {
-    borderRadius: '16px 16px 4px 16px',
-    overflow: 'hidden',
-    maxWidth: '220px',
-    border: '1.5px solid var(--bubble-user-border)',
-  },
-}
-
-const styles = {
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const s = {
   container: {
     minHeight: '100dvh',
     display: 'flex',
     flexDirection: 'column',
-    background: 'var(--bg)',
+    background: '#ffffff',
   },
   header: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '14px 16px',
-    background: 'var(--surface)',
-    borderBottom: '1px solid var(--border)',
+    padding: '14px 20px',
+    background: '#ffffff',
+    borderBottom: '1px solid #f0f0f0',
     position: 'sticky',
     top: 0,
     zIndex: 10,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
+  headerBtn: {
+    width: 36,
+    height: 36,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '20px',
-    color: 'var(--text-2)',
+    fontSize: '16px',
+    color: '#1a1614',
     background: 'transparent',
-    borderRadius: '50%',
-    flexShrink: 0,
+    border: 'none',
+    cursor: 'pointer',
+    padding: 0,
   },
-  headerCenter: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  headerLabel: {
-    fontSize: '11px',
-    fontWeight: '700',
-    letterSpacing: '2.5px',
-    color: 'var(--text)',
+  headerTitle: {
+    fontSize: '12px',
+    fontWeight: '600',
+    letterSpacing: '3px',
+    color: '#1a1614',
     textTransform: 'uppercase',
-  },
-  onlineDot: {
-    width: '7px',
-    height: '7px',
-    borderRadius: '50%',
-    background: '#22c55e',
+    fontFamily: 'var(--font-sans)',
   },
   thread: {
     flex: 1,
     overflowY: 'auto',
     overflowX: 'hidden',
-    padding: '0 0 12px',
   },
   threadInner: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
-    padding: '20px 16px 8px',
+    gap: '12px',
+    padding: '20px 16px 16px',
   },
-  dotsRow: {
+  // AI message
+  msgRow: {
     display: 'flex',
-    gap: '5px',
-    alignItems: 'center',
-    height: '16px',
+    justifyContent: 'flex-start',
+    animation: 'messageIn 0.3s ease',
   },
-  dot: {
-    display: 'inline-block',
-    width: '7px',
-    height: '7px',
-    borderRadius: '50%',
-    background: 'var(--text-3)',
-    animation: 'typingBounce 1.2s ease-in-out infinite',
+  aiBubble: {
+    background: '#f2f2f2',
+    borderRadius: '16px',
+    padding: '14px 16px',
+    maxWidth: '82%',
   },
-  uploadedImg: {
+  bubbleText: {
+    fontSize: '14px',
+    color: '#1a1614',
+    lineHeight: '1.55',
+    margin: 0,
+  },
+  optionsCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  optBtn: {
+    background: '#ffffff',
+    border: '1.5px solid #d0d0d0',
+    borderRadius: '24px',
+    padding: '10px 18px',
+    fontSize: '14px',
+    color: '#1a1614',
+    cursor: 'pointer',
+    textAlign: 'center',
+    fontFamily: 'var(--font-sans)',
+    transition: 'all 0.15s ease',
+  },
+  optBtnSelected: {
+    background: '#e91e8c',
+    border: '1.5px solid #e91e8c',
+    borderRadius: '24px',
+    padding: '10px 18px',
+    fontSize: '14px',
+    color: '#ffffff',
+    cursor: 'default',
+    textAlign: 'center',
+    fontFamily: 'var(--font-sans)',
+  },
+  timestamp: {
+    fontSize: '11px',
+    color: '#aaaaaa',
+    marginTop: '4px',
+    paddingLeft: '4px',
+  },
+  // User message
+  userRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    animation: 'messageIn 0.3s ease',
+  },
+  userBubble: {
+    background: '#ffffff',
+    border: '1.5px solid #e91e8c',
+    borderRadius: '16px 16px 4px 16px',
+    padding: '12px 16px',
+  },
+  userImageBubble: {
+    border: '1.5px solid #e91e8c',
+    borderRadius: '16px 16px 4px 16px',
+    overflow: 'hidden',
+    maxWidth: '220px',
+  },
+  userImage: {
     width: '100%',
-    maxHeight: '280px',
+    maxHeight: '260px',
     objectFit: 'cover',
     display: 'block',
   },
-  qrWrap: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-    paddingLeft: '36px',
-    animation: 'messageIn 0.3s ease',
+  // Products
+  promoLink: {
+    fontSize: '12px',
+    color: '#1a1614',
+    marginBottom: '10px',
+    lineHeight: '1.5',
   },
-  qrBtn: {
-    background: 'var(--surface)',
-    border: '1.5px solid var(--border-light)',
-    borderRadius: '20px',
-    padding: '9px 18px',
-    fontSize: '13px',
-    fontWeight: '500',
-    color: 'var(--text-2)',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
-    fontFamily: 'var(--font-sans)',
-    whiteSpace: 'nowrap',
+  promoLinkText: {
+    color: '#e91e8c',
+    fontStyle: 'italic',
+    textDecoration: 'underline',
   },
-  qrBtnSelected: {
-    background: 'var(--accent)',
-    borderColor: 'var(--accent)',
-    color: 'white',
-  },
-  qrBtnDisabled: {
-    opacity: 0.5,
-    cursor: 'default',
-  },
-  productsWrap: {
-    paddingLeft: '36px',
-    animation: 'messageIn 0.3s ease',
-  },
-  cardsOuter: {
+  productsList: {
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
   },
-  recBadge: {
+  productCard: {
     display: 'flex',
     alignItems: 'center',
-    gap: '5px',
-  },
-  recStar: {
-    color: '#f59e0b',
-    fontSize: '12px',
-  },
-  recLabel: {
-    fontSize: '10px',
-    letterSpacing: '1.5px',
-    textTransform: 'uppercase',
-    color: 'var(--text-3)',
-    fontWeight: '600',
-  },
-  cardsScroll: {
-    display: 'flex',
     gap: '10px',
-    overflowX: 'auto',
-    paddingBottom: '4px',
-    scrollSnapType: 'x mandatory',
-  },
-  card: {
-    background: 'var(--surface)',
-    borderRadius: '14px',
-    border: '1px solid var(--border)',
-    minWidth: '148px',
-    maxWidth: '148px',
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    flexShrink: 0,
-    scrollSnapAlign: 'start',
+    background: '#ffffff',
+    borderRadius: '10px',
+    border: '1px solid #ebebeb',
+    padding: '10px',
     textDecoration: 'none',
-    transition: 'transform 0.15s ease',
   },
-  cardThumb: {
-    height: '80px',
+  productThumb: {
+    width: '56px',
+    height: '56px',
+    borderRadius: '8px',
+    background: '#f8f8f8',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  cardInfo: {
-    padding: '10px 12px 12px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '3px',
+  productInfo: {
     flex: 1,
+    minWidth: 0,
   },
-  cardName: {
-    fontSize: '12px',
+  productName: {
+    fontSize: '13px',
     fontWeight: '600',
-    color: 'var(--text)',
+    color: '#1a1614',
+    margin: 0,
     lineHeight: '1.3',
   },
-  cardStore: {
+  productStore: {
     fontSize: '11px',
-    color: 'var(--text-3)',
+    color: '#888888',
+    margin: '2px 0',
   },
-  cardBottom: {
+  productRating: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: '6px',
+    gap: '4px',
   },
-  cardPrice: {
-    fontSize: '13px',
+  stars: {
+    fontSize: '11px',
+    color: '#f59e0b',
+  },
+  ratingCount: {
+    fontSize: '10px',
+    color: '#aaaaaa',
+  },
+  productPrice: {
+    fontSize: '14px',
     fontWeight: '700',
-    color: 'var(--accent)',
+    color: '#e91e8c',
+    flexShrink: 0,
+    margin: 0,
   },
-  cardArrow: {
-    fontSize: '12px',
-    color: 'var(--text-3)',
+  // Typing dots
+  dots: {
+    display: 'flex',
+    gap: '5px',
+    alignItems: 'center',
+    padding: '2px 0',
   },
+  dot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    background: '#aaaaaa',
+    display: 'inline-block',
+    animation: 'typingBounce 1.2s ease-in-out infinite',
+  },
+  // Input bar
   inputBar: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    padding: '10px 16px',
-    background: 'var(--surface)',
-    borderTop: '1px solid var(--border)',
+    padding: '10px 16px 24px',
+    background: '#ffffff',
+    borderTop: '1px solid #f0f0f0',
     position: 'sticky',
     bottom: 0,
-    zIndex: 10,
   },
-  attachBtn: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    background: 'var(--accent)',
-    color: 'white',
+  plusBtn: {
+    width: '32px',
+    height: '32px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '20px',
-    flexShrink: 0,
+    fontSize: '24px',
+    color: '#1a1614',
+    background: 'transparent',
     border: 'none',
-    fontFamily: 'var(--font-sans)',
+    cursor: 'pointer',
+    flexShrink: 0,
+    fontWeight: '300',
+    lineHeight: 1,
     transition: 'opacity 0.15s ease',
-  },
-  attachBtnDisabled: {
-    opacity: 0.35,
-    cursor: 'default',
   },
   inputField: {
     flex: 1,
-    background: 'var(--surface-2)',
-    borderRadius: '20px',
-    padding: '10px 16px',
-    border: '1px solid var(--border)',
-    minHeight: '40px',
+    border: '1.5px solid #d0d0d0',
+    borderRadius: '24px',
+    padding: '11px 18px',
     display: 'flex',
     alignItems: 'center',
   },
   inputPlaceholder: {
-    fontSize: '13px',
-    color: 'var(--text-3)',
+    fontSize: '14px',
+    color: '#aaaaaa',
   },
-  sendBtn: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '50%',
-    background: 'var(--accent-dim)',
-    color: 'var(--accent)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '16px',
-    fontWeight: '700',
-    flexShrink: 0,
-    border: 'none',
-  },
-  sheetOverlay: {
+  // Bottom sheet
+  overlay: {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(0,0,0,0.4)',
+    background: 'rgba(0,0,0,0.35)',
     zIndex: 100,
     display: 'flex',
     alignItems: 'flex-end',
     animation: 'fadeIn 0.2s ease',
   },
   sheet: {
-    background: 'var(--surface)',
+    background: '#ffffff',
     borderRadius: '20px 20px 0 0',
     padding: '12px 20px 40px',
     width: '100%',
@@ -923,42 +773,42 @@ const styles = {
     width: '36px',
     height: '4px',
     borderRadius: '2px',
-    background: 'var(--border)',
+    background: '#e0e0e0',
     margin: '0 auto 16px',
   },
   sheetTitle: {
     fontSize: '13px',
     fontWeight: '600',
-    color: 'var(--text-3)',
+    color: '#888888',
     letterSpacing: '1px',
     textTransform: 'uppercase',
     marginBottom: '8px',
   },
-  sheetBtn: {
+  sheetRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '14px',
-    padding: '18px 4px',
-    borderBottom: '1px solid var(--border)',
+    padding: '16px 4px',
+    borderBottom: '1px solid #f0f0f0',
     fontSize: '15px',
     fontWeight: '500',
-    color: 'var(--text)',
+    color: '#1a1614',
     background: 'transparent',
     border: 'none',
-    borderBottom: '1px solid var(--border)',
+    borderBottom: '1px solid #f0f0f0',
     fontFamily: 'var(--font-sans)',
     cursor: 'pointer',
     width: '100%',
     textAlign: 'left',
   },
-  sheetBtnIcon: {
+  sheetIcon: {
     fontSize: '22px',
   },
   sheetCancel: {
     marginTop: '8px',
     padding: '14px',
     fontSize: '14px',
-    color: 'var(--text-3)',
+    color: '#888888',
     background: 'transparent',
     border: 'none',
     fontFamily: 'var(--font-sans)',
