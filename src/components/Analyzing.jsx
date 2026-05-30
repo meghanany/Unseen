@@ -26,20 +26,56 @@ export default function Analyzing({ imageData, imagePreview, onDone, onError }) 
 
     async function analyse() {
       try {
-        const res = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageData: imageData.base64,
-            mediaType: imageData.mediaType,
-          }),
-        })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const result = await res.json()
+        // Dev mock: if running locally without API, return sample data after delay
+        const isDev = window.location.hostname === 'localhost'
+        let result
+
+        if (isDev) {
+          await new Promise(r => setTimeout(r, 4500))
+          result = {
+            garment_type: 'deep_v_dress',
+            garment_summary: 'A deep V-neck dress with thin spaghetti straps and a flowy silhouette — elegant and form-fitting through the bodice.',
+            attributes: {
+              neckline: 'deep V-neck',
+              back_style: 'open back',
+              straps: 'spaghetti straps',
+              fabric_opacity: 'semi-sheer',
+              fit: 'fitted bodice, flowy skirt',
+            },
+            primary_recommendation: {
+              type: 'backless_adhesive_bra',
+              name: 'Backless Adhesive Bra',
+              reasoning: 'The deep V and open back rule out any traditional bra. An adhesive bra gives lift and support while staying completely invisible under both the neckline and back.',
+            },
+            alternatives: [
+              {
+                type: 'nipple_covers',
+                name: 'Nipple Covers',
+                reasoning: 'If you prefer a completely free feeling, silicone nipple covers are invisible under the fabric and work beautifully with open-back styles.',
+              },
+              {
+                type: 'fashion_tape',
+                name: 'Fashion Tape',
+                reasoning: 'For added security along the V-neckline edges, fashion tape keeps the fabric in place all evening.',
+              },
+            ],
+          }
+        } else {
+          const res = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              imageData: imageData.base64,
+              mediaType: imageData.mediaType,
+            }),
+          })
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          result = await res.json()
+          if (result.error) throw new Error(result.error)
+        }
+
         if (cancelled) return
-        if (result.error) throw new Error(result.error)
         setDone(true)
-        // Brief pause so last step is visible
         setTimeout(() => onDone(result), 400)
       } catch (err) {
         if (!cancelled) {

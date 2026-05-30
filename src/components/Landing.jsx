@@ -8,8 +8,13 @@ export default function Landing({ onStart, region, setRegion }) {
 
   return (
     <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
+      {/* Top bar */}
+      <div style={styles.topBar}>
+        <span style={styles.topBarText}>AI-POWERED INNERWEAR MATCHING · FREE TO USE</span>
+      </div>
+
+      {/* Nav */}
+      <div style={styles.nav}>
         <span style={styles.logo}>UNSEEN</span>
         {wardrobeCount > 0 && (
           <button style={styles.wardrobeBtn} onClick={onStart}>
@@ -19,59 +24,71 @@ export default function Landing({ onStart, region, setRegion }) {
       </div>
 
       {/* Hero */}
-      <div style={styles.hero}>
-        <div style={styles.heroText}>
-          <h1 style={styles.headline}>
-            The layer nobody sees.
-          </h1>
-          <h1 style={styles.headline2}>
-            The difference everyone notices.
-          </h1>
+      <div style={styles.heroBg}>
+        <div style={styles.heroInner}>
+          <p style={styles.heroEyebrow}>The layer nobody sees.</p>
+          <h1 style={styles.headline}>THE DIFFERENCE<br />EVERYONE<br />NOTICES.</h1>
+          <p style={styles.heroSub}>
+            Upload any outfit. Know exactly what innerwear works underneath — no guessing, no wardrobe fails.
+          </p>
+          <button style={styles.cta} onClick={onStart}>
+            UPLOAD YOUR OUTFIT →
+          </button>
         </div>
-        <p style={styles.subtext}>
-          Upload any outfit. Know exactly what innerwear works underneath — no guessing, no wardrobe fails.
-        </p>
+        <div style={styles.decoCircle} />
+        <div style={styles.decoLine} />
       </div>
 
-      {/* Privacy badge */}
-      <div style={styles.privacyBadge}>
-        <span style={styles.lock}>🔒</span>
-        <span style={styles.privacyText}>No need to wear it · Screenshot or flat lay works · Photo never stored</span>
-      </div>
-
-      {/* Region selector */}
-      <div style={styles.regionWrap}>
-        <button style={styles.regionBtn} onClick={() => setShowRegions(!showRegions)}>
-          <span>{REGIONS[region].flag}</span>
-          <span>Shopping in {REGIONS[region].name}</span>
-          <span style={{ marginLeft: 'auto', opacity: 0.5 }}>▾</span>
-        </button>
-        {showRegions && (
-          <div style={styles.regionDropdown}>
-            {Object.entries(REGIONS).map(([key, val]) => (
-              <button
-                key={key}
-                style={{ ...styles.regionOption, ...(region === key ? styles.regionActive : {}) }}
-                onClick={() => { setRegion(key); setShowRegions(false) }}
-              >
-                <span>{val.flag}</span>
-                <span>{val.name}</span>
-                {region === key && <span style={{ marginLeft: 'auto' }}>✓</span>}
-              </button>
-            ))}
+      {/* How it works strip */}
+      <div style={styles.howStrip}>
+        {[
+          ['01', 'UPLOAD', 'Screenshot, flat lay, or hanger shot'],
+          ['02', 'ANALYSE', 'Claude AI reads your garment'],
+          ['03', 'SHOP', 'Real products, your region'],
+        ].map(([num, title, desc]) => (
+          <div key={num} style={styles.howStep}>
+            <span style={styles.howNum}>{num}</span>
+            <span style={styles.howTitle}>{title}</span>
+            <span style={styles.howDesc}>{desc}</span>
           </div>
-        )}
+        ))}
       </div>
 
-      {/* CTA */}
-      <button style={styles.cta} onClick={onStart}>
-        Upload Your Outfit →
-      </button>
+      {/* Privacy + Region */}
+      <div style={styles.bottomSection}>
+        <div style={styles.privacyBadge}>
+          <span>🔒</span>
+          <span style={styles.privacyText}>No need to wear it · Photo never stored</span>
+        </div>
 
-      {/* Impact stat */}
-      <div style={styles.impactBar}>
-        <p style={styles.impactText}>
-          🌱 Fashion returns generate <strong style={{ color: 'var(--green)' }}>27M tonnes of CO₂</strong> annually. Buying right the first time starts here.
+        <div style={{ position: 'relative' }}>
+          <button style={styles.regionBtn} onClick={() => setShowRegions(!showRegions)}>
+            <span>{REGIONS[region].flag}</span>
+            <span>{REGIONS[region].name}</span>
+            <span style={{ opacity: 0.4, marginLeft: 'auto' }}>▾</span>
+          </button>
+          {showRegions && (
+            <div style={styles.regionDropdown}>
+              {Object.entries(REGIONS).map(([key, val]) => (
+                <button
+                  key={key}
+                  style={{ ...styles.regionOption, ...(region === key ? styles.regionActive : {}) }}
+                  onClick={() => { setRegion(key); setShowRegions(false) }}
+                >
+                  <span>{val.flag}</span>
+                  <span>{val.name}</span>
+                  {region === key && <span>✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Eco bar */}
+      <div style={styles.ecoBar}>
+        <p style={styles.ecoText}>
+          🌱 Fashion returns generate <strong>27M tonnes of CO₂</strong> annually. Getting it right the first time starts here.
         </p>
       </div>
     </div>
@@ -83,148 +100,210 @@ const styles = {
     minHeight: '100dvh',
     display: 'flex',
     flexDirection: 'column',
-    padding: '0 20px 32px',
-    gap: '0',
+    background: 'var(--bg)',
   },
-  header: {
+  topBar: {
+    background: 'var(--green)',
+    padding: '10px 20px',
+    textAlign: 'center',
+  },
+  topBarText: {
+    fontSize: '10px',
+    letterSpacing: '2px',
+    color: '#ffffff',
+    fontWeight: '500',
+  },
+  nav: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: '56px',
-    paddingBottom: '8px',
+    padding: '20px 24px',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--surface)',
   },
   logo: {
     fontFamily: 'var(--font-serif)',
-    fontSize: '22px',
+    fontSize: '24px',
     fontWeight: '600',
-    letterSpacing: '6px',
+    letterSpacing: '8px',
     color: 'var(--text)',
   },
   wardrobeBtn: {
-    fontSize: '12px',
+    fontSize: '11px',
+    letterSpacing: '1px',
     color: 'var(--text-3)',
     border: '1px solid var(--border)',
     borderRadius: '20px',
-    padding: '6px 14px',
-    background: 'var(--surface)',
+    padding: '7px 14px',
+    background: 'transparent',
+    textTransform: 'uppercase',
   },
-  hero: {
+  heroBg: {
+    background: 'var(--pink-light)',
+    position: 'relative',
+    overflow: 'hidden',
+    padding: '48px 24px 56px',
     flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    paddingTop: '48px',
-    paddingBottom: '32px',
-    gap: '20px',
   },
-  heroText: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
+  heroInner: {
+    position: 'relative',
+    zIndex: 2,
+  },
+  heroEyebrow: {
+    fontSize: '12px',
+    letterSpacing: '2px',
+    textTransform: 'uppercase',
+    color: 'var(--accent)',
+    marginBottom: '16px',
+    fontWeight: '500',
+    fontStyle: 'italic',
   },
   headline: {
     fontFamily: 'var(--font-serif)',
-    fontSize: 'clamp(36px, 10vw, 48px)',
+    fontSize: 'clamp(48px, 13vw, 68px)',
     fontWeight: '300',
-    lineHeight: '1.1',
+    lineHeight: '0.93',
     color: 'var(--text)',
-    letterSpacing: '-0.5px',
+    letterSpacing: '-1px',
+    marginBottom: '24px',
+    textTransform: 'uppercase',
   },
-  headline2: {
-    fontFamily: 'var(--font-serif)',
-    fontSize: 'clamp(36px, 10vw, 48px)',
-    fontWeight: '300',
-    lineHeight: '1.1',
-    color: 'var(--accent-light)',
-    letterSpacing: '-0.5px',
-    fontStyle: 'italic',
-  },
-  subtext: {
-    fontSize: '15px',
+  heroSub: {
+    fontSize: '14px',
     color: 'var(--text-2)',
-    lineHeight: '1.6',
-    maxWidth: '340px',
+    lineHeight: '1.7',
+    maxWidth: '300px',
+    marginBottom: '36px',
+  },
+  cta: {
+    display: 'inline-block',
+    background: 'var(--accent)',
+    color: 'white',
+    padding: '16px 28px',
+    borderRadius: '0',
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '2.5px',
+    border: 'none',
+    cursor: 'pointer',
+  },
+  decoCircle: {
+    position: 'absolute',
+    right: '-50px',
+    top: '10px',
+    width: '220px',
+    height: '220px',
+    borderRadius: '50%',
+    border: '1px solid rgba(212,84,122,0.15)',
+    pointerEvents: 'none',
+  },
+  decoLine: {
+    position: 'absolute',
+    right: '48px',
+    bottom: '0',
+    width: '1px',
+    height: '100px',
+    background: 'rgba(212,84,122,0.25)',
+    pointerEvents: 'none',
+  },
+  howStrip: {
+    display: 'flex',
+    borderTop: '1px solid var(--border)',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--surface)',
+  },
+  howStep: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    padding: '18px 12px',
+    borderRight: '1px solid var(--border)',
+  },
+  howNum: {
+    fontSize: '10px',
+    color: 'var(--accent)',
+    letterSpacing: '1px',
+    fontWeight: '700',
+    marginBottom: '4px',
+  },
+  howTitle: {
+    fontSize: '10px',
+    letterSpacing: '2px',
+    color: 'var(--text)',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  howDesc: {
+    fontSize: '11px',
+    color: 'var(--text-3)',
+    lineHeight: '1.4',
+  },
+  bottomSection: {
+    padding: '20px 24px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    background: 'var(--surface)',
   },
   privacyBadge: {
     display: 'flex',
-    alignItems: 'flex-start',
-    gap: '10px',
-    background: 'var(--surface)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
-    padding: '14px 16px',
-    marginBottom: '16px',
-  },
-  lock: { fontSize: '14px', flexShrink: 0, marginTop: '1px' },
-  privacyText: {
+    alignItems: 'center',
+    gap: '8px',
     fontSize: '13px',
-    color: 'var(--text-3)',
-    lineHeight: '1.5',
   },
-  regionWrap: {
-    position: 'relative',
-    marginBottom: '16px',
+  privacyText: {
+    fontSize: '12px',
+    color: 'var(--text-3)',
   },
   regionBtn: {
     width: '100%',
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    background: 'var(--surface)',
+    background: 'var(--surface-2)',
     border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
-    padding: '14px 16px',
-    fontSize: '14px',
+    borderRadius: 'var(--radius-sm)',
+    padding: '12px 14px',
+    fontSize: '13px',
     color: 'var(--text-2)',
     textAlign: 'left',
   },
   regionDropdown: {
     position: 'absolute',
-    top: 'calc(100% + 4px)',
+    bottom: 'calc(100% + 4px)',
     left: 0,
     right: 0,
-    background: 'var(--surface-2)',
+    background: 'var(--surface)',
     border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
+    borderRadius: 'var(--radius-sm)',
     overflow: 'hidden',
     zIndex: 10,
+    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
   },
   regionOption: {
     width: '100%',
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    padding: '14px 16px',
-    fontSize: '14px',
+    padding: '13px 16px',
+    fontSize: '13px',
     color: 'var(--text-2)',
     borderBottom: '1px solid var(--border)',
     textAlign: 'left',
   },
   regionActive: {
-    color: 'var(--accent-light)',
+    color: 'var(--accent)',
     background: 'var(--accent-dim)',
   },
-  cta: {
-    width: '100%',
-    background: 'var(--accent)',
-    color: 'white',
-    padding: '18px',
-    borderRadius: 'var(--radius)',
-    fontSize: '16px',
-    fontWeight: '500',
-    letterSpacing: '0.3px',
-    marginBottom: '20px',
-    transition: 'opacity var(--transition)',
-  },
-  impactBar: {
+  ecoBar: {
     background: 'var(--green-bg)',
-    border: '1px solid rgba(134,239,172,0.15)',
-    borderRadius: 'var(--radius)',
-    padding: '14px 16px',
+    padding: '14px 24px',
+    borderTop: '1px solid rgba(45,74,53,0.1)',
   },
-  impactText: {
-    fontSize: '13px',
-    color: 'var(--text-3)',
-    lineHeight: '1.5',
+  ecoText: {
+    fontSize: '12px',
+    color: 'var(--green-text)',
+    lineHeight: '1.6',
   },
 }

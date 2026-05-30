@@ -5,6 +5,7 @@ export default function Upload({ onUpload, onBack }) {
   const [preview, setPreview] = useState(null)
   const [error, setError] = useState(null)
   const inputRef = useRef(null)
+  const cameraRef = useRef(null)
 
   const processFile = (file) => {
     if (!file) return
@@ -23,7 +24,6 @@ export default function Upload({ onUpload, onBack }) {
       const base64 = dataUrl.split(',')[1]
       const mediaType = file.type || 'image/jpeg'
       setPreview(dataUrl)
-      // Auto-proceed after short preview
       setTimeout(() => onUpload({ base64, mediaType }, dataUrl), 600)
     }
     reader.readAsDataURL(file)
@@ -48,6 +48,7 @@ export default function Upload({ onUpload, onBack }) {
 
       <div style={styles.content}>
         <div style={styles.titleGroup}>
+          <p style={styles.eyebrow}>Step 1 of 1</p>
           <h2 style={styles.title}>Upload your outfit</h2>
           <p style={styles.subtitle}>Screenshot, flat lay, or hanger shot — any works.</p>
         </div>
@@ -82,6 +83,14 @@ export default function Upload({ onUpload, onBack }) {
           style={{ display: 'none' }}
           onChange={handleChange}
         />
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={handleChange}
+        />
 
         {error && <p style={styles.error}>{error}</p>}
 
@@ -104,9 +113,14 @@ export default function Upload({ onUpload, onBack }) {
         </div>
 
         {!preview && (
-          <button style={styles.browseBtn} onClick={() => inputRef.current?.click()}>
-            Choose from Gallery
-          </button>
+          <div style={styles.btnRow}>
+            <button style={styles.browseBtn} onClick={() => inputRef.current?.click()}>
+              📁 GALLERY
+            </button>
+            <button style={styles.cameraBtn} onClick={() => cameraRef.current?.click()}>
+              📷 TAKE PHOTO
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -114,39 +128,50 @@ export default function Upload({ onUpload, onBack }) {
 }
 
 const styles = {
-  container: { minHeight: '100dvh', display: 'flex', flexDirection: 'column' },
+  container: { minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' },
   nav: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '16px 20px',
+    padding: '16px 24px',
     borderBottom: '1px solid var(--border)',
+    background: 'var(--surface)',
   },
-  back: { fontSize: '14px', color: 'var(--text-3)', width: 60 },
+  back: { fontSize: '13px', color: 'var(--text-3)', width: 60 },
   logo: {
     fontFamily: 'var(--font-serif)',
-    fontSize: '18px',
+    fontSize: '20px',
     fontWeight: '600',
-    letterSpacing: '5px',
+    letterSpacing: '6px',
+    color: 'var(--text)',
   },
   content: {
     flex: 1,
-    padding: '24px 20px 32px',
+    padding: '28px 24px 40px',
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
   },
   titleGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
+  eyebrow: {
+    fontSize: '10px',
+    letterSpacing: '2px',
+    textTransform: 'uppercase',
+    color: 'var(--accent)',
+    fontWeight: '600',
+  },
   title: {
     fontFamily: 'var(--font-serif)',
-    fontSize: '28px',
-    fontWeight: '400',
+    fontSize: '32px',
+    fontWeight: '300',
     color: 'var(--text)',
+    textTransform: 'uppercase',
+    letterSpacing: '-0.5px',
   },
-  subtitle: { fontSize: '14px', color: 'var(--text-3)' },
+  subtitle: { fontSize: '13px', color: 'var(--text-3)' },
   dropzone: {
     border: '1.5px dashed var(--border-light)',
-    borderRadius: 'var(--radius-lg)',
+    borderRadius: 'var(--radius)',
     minHeight: '220px',
     display: 'flex',
     alignItems: 'center',
@@ -181,17 +206,18 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '22px',
-    color: 'var(--accent-light)',
+    color: 'var(--accent)',
   },
-  dropTitle: { fontSize: '16px', color: 'var(--text)', fontWeight: '500' },
+  dropTitle: { fontSize: '15px', color: 'var(--text)', fontWeight: '500' },
   dropSub: { fontSize: '13px', color: 'var(--text-3)' },
   previewImg: { width: '100%', height: '100%', objectFit: 'contain', maxHeight: '400px' },
   error: {
     fontSize: '13px',
     color: 'var(--red)',
-    background: 'rgba(248,113,113,0.08)',
+    background: 'rgba(192,57,43,0.06)',
     padding: '12px 16px',
     borderRadius: 'var(--radius-sm)',
+    border: '1px solid rgba(192,57,43,0.15)',
   },
   tips: {
     background: 'var(--surface)',
@@ -200,20 +226,45 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
+    border: '1px solid var(--border)',
   },
-  tipsTitle: { fontSize: '12px', color: 'var(--text-3)', letterSpacing: '1px', textTransform: 'uppercase' },
+  tipsTitle: {
+    fontSize: '10px',
+    color: 'var(--text-3)',
+    letterSpacing: '2px',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+  },
   tipsList: { display: 'flex', flexDirection: 'column', gap: '10px' },
   tip: { display: 'flex', alignItems: 'flex-start', gap: '12px' },
-  tipIcon: { fontSize: '16px', flexShrink: 0, marginTop: '1px' },
+  tipIcon: { fontSize: '15px', flexShrink: 0, marginTop: '1px' },
   tipText: { fontSize: '13px', color: 'var(--text-2)', lineHeight: '1.5' },
+  btnRow: {
+    display: 'flex',
+    gap: '10px',
+  },
   browseBtn: {
-    width: '100%',
-    background: 'var(--surface-2)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
-    padding: '16px',
-    fontSize: '15px',
+    flex: 1,
+    background: 'var(--accent)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0',
+    padding: '18px 12px',
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '2px',
+    cursor: 'pointer',
+  },
+  cameraBtn: {
+    flex: 1,
+    background: 'var(--surface)',
     color: 'var(--text)',
-    fontWeight: '500',
+    border: '1.5px solid var(--border-light)',
+    borderRadius: '0',
+    padding: '18px 12px',
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '2px',
+    cursor: 'pointer',
   },
 }
