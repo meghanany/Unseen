@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   AIBubble, UserBubble, TypingIndicator,
   ProductCard, InputBar, BottomSheet, ChatHeader,
-  C, FONT_PUBLIC,
+  C, FONT_PUBLIC, FONT_CANELA,
 } from './UIComponents'
 import { getProducts, REGIONS } from '../data/products'
 import { saveToWardrobe, getWardrobe } from '../utils/wardrobe'
@@ -12,11 +12,49 @@ let _id = 0
 const mid = () => String(++_id)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// ─── Landing card (first message) ────────────────────────────────────────────
+function LandingCard() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, animation: 'vs-msg-in 0.3s ease' }}>
+      <p style={{ ...FONT_CANELA, fontSize: 16, lineHeight: '20px', letterSpacing: '0.64px', color: C.textDark, margin: 0 }}>
+        Ask me something like...
+      </p>
+      <div style={{
+        background: C.pinkBg,
+        border: `1px solid ${C.pinkAccent}`,
+        borderRadius: 10,
+        padding: 12,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        maxWidth: 295,
+      }}>
+        <p style={{ ...FONT_PUBLIC(), fontSize: 13, lineHeight: '20px', letterSpacing: '0.52px', color: C.textDark, margin: 0 }}>
+          What type of bra can I wear with this top?
+        </p>
+        {/* Example outfit image placeholder */}
+        <div style={{
+          width: 147, height: 105,
+          borderRadius: 10,
+          background: '#f0e8ea',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 36,
+        }}>
+          👗
+        </div>
+        <p style={{ ...FONT_PUBLIC(), fontStyle: 'italic', fontSize: 12, lineHeight: '20px', letterSpacing: '0.48px', color: C.textDark, margin: 0 }}>
+          PS: Upload an image, screenshot, or lay it flat!
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Chat ────────────────────────────────────────────────────────────────
 export default function Chat({ onBack }) {
   const [messages, setMessages]       = useState([])
   const [isTyping, setIsTyping]       = useState(false)
-  const [phase, setPhase]             = useState('location')
+  const [phase, setPhase]             = useState('upload')
   const [region, setRegion]           = useState(null)
   const regionRef                     = useRef(null)
   const [analysis, setAnalysis]       = useState(null)
@@ -39,19 +77,11 @@ export default function Chat({ onBack }) {
   const addMsg   = useCallback((msg) => setMessages((m) => [...m, { id: mid(), ...msg }]), [])
   const typing   = useCallback(async (ms = 1000) => { setIsTyping(true); await sleep(ms); setIsTyping(false) }, [])
 
-  // ── Init ──
+  // ── Init: show upload prompt first ──
   useEffect(() => {
     const init = async () => {
-      await sleep(600)
-      await typing(1000)
-      addMsg({
-        type: 'ai',
-        text: "We've detected your location as India. Is this correct?",
-        actions: [
-          { id: 'IN',    label: 'Yes, proceed' },
-          { id: 'other', label: 'No, I am in a different location' },
-        ],
-      })
+      await sleep(400)
+      addMsg({ type: 'landing' })
     }
     init()
   }, []) // eslint-disable-line
@@ -78,15 +108,24 @@ export default function Chat({ onBack }) {
       // region confirmed
       const r = action.id
       setRegion(r); regionRef.current = r
-      setPhase('upload'); phaseRef.current = 'upload'
+      setPhase('followup_or_results'); phaseRef.current = 'followup_or_results'
       addMsg({ type: 'user', text: action.label })
 
-      const storeHint = r === 'IN' ? 'Zivame, Clovia, or Myntra'
-        : r === 'UK' ? 'M&S or ASOS'
-        : "Victoria's Secret or Aerie"
-
-      await typing(1000)
-      addMsg({ type: 'ai', text: `${REGIONS[r].flag} Perfect! Upload your outfit — a screenshot from ${storeHint}, flat lay, or hanger shot. Tap + to attach a photo.` })
+      // now check if we have followups pending
+      if (followups.length > 0) {
+        setPhase('followup'); phaseRef.current = 'followup'
+        await typing(900)
+        const q = followups[0]
+        addMsg({
+          type: 'ai',
+          text: q.question,
+          actions: q.options.map((o) => ({ id: o, label: o })),
+        })
+      } else if (analysis) {
+        setPhase('results'); phaseRef.current = 'results'
+        await typing(1200)
+        await showRecommendation(analysis, r)
+      }
 
     } else if (currentPhase === 'followup') {
       addMsg({ type: 'user', text: action.label })
@@ -157,51 +196,53 @@ export default function Chat({ onBack }) {
       setPhase('analyzing'); phaseRef.current = 'analyzing'
       setIsTyping(true)
 
+      // Run API call in parallel while we ask about location
+      let apiPromise
       try {
         const isDev = window.location.hostname === 'localhost'
-        let result
-
         if (isDev) {
-          await sleep(3500)
-          result = mockResult()
+          apiPromise = sleep(3500).then(() => mockResult())
         } else {
-          const res = await fetch('/api/analyze', {
+          apiPromise = fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ imageData: base64, mediaType }),
+          }).then(async (res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            const result = await res.json()
+            if (result.error) throw new Error(result.error)
+            return result
           })
-          if (!res.ok) throw new Error(`HTTP ${res.status}`)
-          result = await res.json()
-          if (result.error) throw new Error(result.error)
         }
+      } catch (err) {
+        apiPromise = Promise.reject(err)
+      }
 
-        setIsTyping(false)
+      // Ask location while API runs
+      setIsTyping(false)
+      await sleep(300)
+      await typing(800)
+      setPhase('location'); phaseRef.current = 'location'
+      addMsg({
+        type: 'ai',
+        text: "We've detected your location as India. Is this correct?",
+        actions: [
+          { id: 'IN',    label: 'Yes, proceed' },
+          { id: 'other', label: 'No, I am in a different location' },
+        ],
+      })
+
+      // Store API result when ready
+      apiPromise.then((result) => {
         setAnalysis(result)
-
         if (result.needs_followup && result.followup_questions?.length > 0) {
           setFollowups(result.followup_questions)
           setFollowupIdx(0)
-          setPhase('followup'); phaseRef.current = 'followup'
-          await sleep(400)
-          await typing(900)
-          const q = result.followup_questions[0]
-          addMsg({
-            type: 'ai',
-            text: q.question,
-            actions: q.options.map((o) => ({ id: o, label: o })),
-          })
-        } else {
-          setPhase('results'); phaseRef.current = 'results'
-          await sleep(400)
-          await typing(1200)
-          await showRecommendation(result, regionRef.current)
         }
-      } catch (err) {
+      }).catch((err) => {
         console.error(err)
-        setIsTyping(false)
-        addMsg({ type: 'ai', text: "I couldn't read that image clearly. Try a brighter photo or a screenshot? 🤔" })
-        setPhase('upload'); phaseRef.current = 'upload'
-      }
+        // Will surface the error after location is confirmed
+      })
     }
     reader.readAsDataURL(file)
   }, [addMsg, typing, showRecommendation])
@@ -216,6 +257,9 @@ export default function Chat({ onBack }) {
       {/* Message thread */}
       <div className="vs-messages" style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
         {messages.map((msg) => {
+          if (msg.type === 'landing') {
+            return <LandingCard key={msg.id} />
+          }
           if (msg.type === 'user') {
             return (
               <UserBubble key={msg.id} text={msg.text} image={msg.image} />
